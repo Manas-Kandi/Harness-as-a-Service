@@ -1,7 +1,7 @@
 import { Task, AuditEntry, HarnessConfig } from "./types";
 
 // In-memory store for the PoC
-class Store {
+export class Store {
   private tasks: Task[] = [];
   private auditLog: AuditEntry[] = [];
   private config: HarnessConfig = {
@@ -65,6 +65,19 @@ class Store {
 
   addSpend(amount: number): void {
     this.monthlySpend += amount;
+  }
+
+  reset(): void {
+    this.tasks = [];
+    this.auditLog = [];
+    this.config = {
+      perTaskTokenBudget: 4000,
+      monthlySpendCap: 50.0,
+      autoApproveThreshold: 0.15,
+      qaScoreThreshold: 7,
+      maxRetries: 2,
+    };
+    this.monthlySpend = 0.0;
   }
 }
 
