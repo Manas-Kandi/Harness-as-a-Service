@@ -5,7 +5,7 @@ import { executeAgent } from "./agents";
 
 export interface HarnessResult {
   success: boolean;
-  task: Task;
+  task?: Task;
   blockedReason?: string;
 }
 
@@ -83,7 +83,7 @@ export function submitTask(
 
 export function approveTask(taskId: string, approved: boolean, notes?: string): HarnessResult {
   const task = store.getTaskById(taskId);
-  if (!task) return { success: false, task: task!, blockedReason: "Task not found" };
+  if (!task) return { success: false, blockedReason: "Task not found" };
 
   if (task.status !== "awaiting-approval") {
     return { success: false, task, blockedReason: "Task is not awaiting approval" };
