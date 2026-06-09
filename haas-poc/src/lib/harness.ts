@@ -137,7 +137,13 @@ export function executeWithHarness(task: Task): HarnessResult {
   store.updateTask(task.id, task);
   addAudit(task.id, "QA Review Started", "Verifying output quality", "QA Agent");
 
-  const qaScore = Math.floor(Math.random() * 4) + 7; // 7-10 for demo
+  // Mode-dependent QA distribution so the threshold and retry logic are exercisable
+  const qaScore = (() => {
+    const r = Math.random();
+    if (task.mode === "fast") return r < 0.25 ? 4 : r < 0.5 ? 6 : Math.floor(r * 5) + 5; // 4-9
+    if (task.mode === "deep-research") return r < 0.1 ? 5 : Math.floor(r * 5) + 5; // 5-9
+    return r < 0.15 ? 5 : Math.floor(r * 5) + 5; // standard: 5-9
+  })();
   task.qaScore = qaScore;
 
   if (qaScore < config.qaScoreThreshold) {
