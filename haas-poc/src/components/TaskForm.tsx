@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TaskType, ExecutionMode } from "@/lib/types";
 import { estimateCost, getModeLabel } from "@/lib/costs";
-import { Zap, Scale, Search, Send, DollarSign } from "lucide-react";
+import { Zap, Scale, Search, Send, DollarSign, AlertTriangle } from "lucide-react";
 
 const taskLabels: Record<TaskType, string> = {
   "draft-email": "Draft Email",
@@ -24,6 +24,7 @@ export default function TaskForm({ onSubmit }: { onSubmit: () => void }) {
   const [mode, setMode] = useState<ExecutionMode>("standard");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const estimate = estimateCost(type, mode, description.length);
 
@@ -31,21 +32,28 @@ export default function TaskForm({ onSubmit }: { onSubmit: () => void }) {
     e.preventDefault();
     if (!description.trim()) return;
     setLoading(true);
-    await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submit",
-        type,
-        description,
-        mode,
-        priority,
-        requestedBy: "User",
-      }),
-    });
-    setDescription("");
-    setLoading(false);
-    onSubmit();
+    setError(null);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "submit",
+          type,
+          description,
+          mode,
+          priority,
+          requestedBy: "User",
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDescription("");
+      onSubmit();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to submit task");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -134,6 +142,12 @@ export default function TaskForm({ onSubmit }: { onSubmit: () => void }) {
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
       <button
         type="submit"
         disabled={loading || !description.trim()}

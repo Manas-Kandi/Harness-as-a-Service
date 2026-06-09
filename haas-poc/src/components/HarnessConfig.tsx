@@ -2,18 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { HarnessConfig as ConfigType } from "@/lib/types";
-import { Settings, DollarSign, Hash, CheckCircle, RotateCcw } from "lucide-react";
+import { Settings, DollarSign, Hash, CheckCircle, RotateCcw, AlertTriangle } from "lucide-react";
 
 export default function HarnessConfig({ refreshTrigger }: { refreshTrigger: number }) {
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [monthlySpend, setMonthlySpend] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchConfig = async () => {
-    const res = await fetch("/api/harness/config");
-    const json = await res.json();
-    setConfig(json.config);
-    setMonthlySpend(json.monthlySpend);
+    try {
+      const res = await fetch("/api/harness/config");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setConfig(json.config);
+      setMonthlySpend(json.monthlySpend);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch config");
+    }
   };
 
   useEffect(() => {
@@ -23,16 +30,23 @@ export default function HarnessConfig({ refreshTrigger }: { refreshTrigger: numb
   const updateField = async (field: keyof ConfigType, value: number) => {
     if (!config) return;
     setLoading(true);
-    const newConfig = { ...config, [field]: value };
-    const res = await fetch("/api/harness/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newConfig),
-    });
-    const json = await res.json();
-    setConfig(json.config);
-    setMonthlySpend(json.monthlySpend);
-    setLoading(false);
+    try {
+      const newConfig = { ...config, [field]: value };
+      const res = await fetch("/api/harness/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setConfig(json.config);
+      setMonthlySpend(json.monthlySpend);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update config");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!config) return null;
@@ -44,6 +58,12 @@ export default function HarnessConfig({ refreshTrigger }: { refreshTrigger: numb
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Harness Configuration</h2>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mb-4">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
       <div className="space-y-5">
         <ConfigField
           label="Monthly Spend Cap"

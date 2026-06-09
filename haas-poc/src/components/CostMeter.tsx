@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DollarSign, AlertTriangle } from "lucide-react";
+import { DollarSign, AlertTriangle, Loader2 } from "lucide-react";
 
 export default function CostMeter() {
   const [data, setData] = useState<{ monthlySpend: number; config: { monthlySpendCap: number } } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
-    const res = await fetch("/api/harness/config");
-    const json = await res.json();
-    setData(json);
+    try {
+      const res = await fetch("/api/harness/config");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setData(json);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch spend data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -17,6 +27,28 @@ export default function CostMeter() {
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading spend data...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center justify-center gap-2 text-sm text-red-600 dark:text-red-400">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   if (!data) return null;
 

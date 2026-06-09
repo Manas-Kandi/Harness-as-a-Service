@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuditEntry } from "@/lib/types";
-import { Activity, User, Bot, ShieldCheck, AlertOctagon } from "lucide-react";
+import { Activity, User, Bot, ShieldCheck, AlertOctagon, AlertTriangle, Loader2 } from "lucide-react";
 
 const actorIcons: Record<string, React.ReactNode> = {
   User: <User className="w-3.5 h-3.5" />,
@@ -27,11 +27,21 @@ const eventColors: Record<string, string> = {
 
 export default function AuditTrail({ refreshTrigger }: { refreshTrigger: number }) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAudit = async () => {
-    const res = await fetch("/api/audit");
-    const json = await res.json();
-    setEntries(json.auditLog || []);
+    try {
+      const res = await fetch("/api/audit");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setEntries(json.auditLog || []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch audit log");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -47,7 +57,19 @@ export default function AuditTrail({ refreshTrigger }: { refreshTrigger: number 
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Audit Trail</h2>
       </div>
       <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-        {entries.length === 0 && (
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading audit trail...
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-red-600 dark:text-red-400">
+            <AlertTriangle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
+        {!loading && !error && entries.length === 0 && (
           <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">No events recorded yet.</p>
         )}
         {entries.map((entry) => (

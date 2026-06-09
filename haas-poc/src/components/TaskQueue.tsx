@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Task, TaskStatus } from "@/lib/types";
-import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 
 const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string }> = {
   queued: { label: "Queued", icon: <Clock className="w-4 h-4" />, color: "text-zinc-500" },
@@ -16,11 +16,21 @@ const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; c
 
 export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTasks = async () => {
-    const res = await fetch("/api/tasks");
-    const json = await res.json();
-    setTasks(json.tasks || []);
+    try {
+      const res = await fetch("/api/tasks");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setTasks(json.tasks || []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch tasks");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -39,7 +49,19 @@ export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Task Queue</h2>
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-        {tasks.length === 0 && (
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading tasks...
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-red-600 dark:text-red-400">
+            <AlertTriangle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
+        {!loading && !error && tasks.length === 0 && (
           <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">No tasks yet. Submit one above.</p>
         )}
         {tasks.map((task) => (
