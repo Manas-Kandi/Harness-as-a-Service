@@ -96,6 +96,9 @@ export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }
               {task.tokensUsed > 0 && <span>{task.tokensUsed} tokens</span>}
               {task.qaScore !== undefined && <span>QA: {task.qaScore}/10</span>}
               {task.retryCount > 0 && <span>Retries: {task.retryCount}</span>}
+              {task.durationMs !== undefined && (
+                <span>{(task.durationMs / 1000).toFixed(1)}s</span>
+              )}
             </div>
 
             {task.output && (

@@ -27,6 +27,9 @@ export interface Task {
   qaScore?: number;
   retryCount: number;
   approvalNotes?: string;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
 }
 
 export interface AuditEntry {

@@ -57,6 +57,8 @@ export function submitTask(
   const monthlySpend = store.getMonthlySpend();
   if (monthlySpend + estimate.cost > config.monthlySpendCap) {
     task.status = "failed";
+    task.completedAt = new Date().toISOString();
+    task.durationMs = 0;
     store.updateTask(task.id, task);
     addAudit(task.id, "Cost Control Blocked", `Monthly cap $${config.monthlySpendCap} would be exceeded`, "Harness");
     return { success: false, task, blockedReason: "Monthly spend cap would be exceeded" };
@@ -92,6 +94,8 @@ export function approveTask(taskId: string, approved: boolean, notes?: string): 
   if (!approved) {
     task.status = "rejected";
     task.approvalNotes = notes || "Rejected by user";
+    task.completedAt = new Date().toISOString();
+    task.durationMs = task.startedAt ? new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime() : undefined;
     store.updateTask(taskId, task);
     addAudit(taskId, "Task Rejected", notes || "Rejected by user", "User");
     return { success: false, task, blockedReason: "Rejected by user" };
@@ -106,6 +110,7 @@ export function approveTask(taskId: string, approved: boolean, notes?: string): 
 export function executeWithHarness(task: Task): HarnessResult {
   const config = store.getConfig();
   task.status = "executing";
+  task.startedAt = new Date().toISOString();
   store.updateTask(task.id, task);
   addAudit(task.id, "Agent Execution Started", `Mode: ${task.mode}`, "Agent");
 
@@ -121,6 +126,8 @@ export function executeWithHarness(task: Task): HarnessResult {
     }
     task.status = "failed";
     task.actualCost = estimate.cost;
+    task.completedAt = new Date().toISOString();
+    task.durationMs = task.startedAt ? new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime() : undefined;
     store.addSpend(estimate.cost);
     store.updateTask(task.id, task);
     addAudit(task.id, "Execution Failed", `Max retries (${config.maxRetries}) exhausted`, "Agent", estimate.cost);
@@ -155,12 +162,16 @@ export function executeWithHarness(task: Task): HarnessResult {
       return executeWithHarness(task);
     }
     task.status = "failed";
+    task.completedAt = new Date().toISOString();
+    task.durationMs = task.startedAt ? new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime() : undefined;
     store.updateTask(task.id, task);
     addAudit(task.id, "QA Failed", `Score ${qaScore} below threshold. Max retries exhausted.`, "QA Agent", estimate.cost);
     return { success: false, task, blockedReason: "QA score below threshold after max retries" };
   }
 
   task.status = "completed";
+  task.completedAt = new Date().toISOString();
+  task.durationMs = task.startedAt ? new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime() : undefined;
   store.updateTask(task.id, task);
   addAudit(task.id, "Task Completed", `QA Score: ${qaScore}/10, Cost: $${estimate.cost.toFixed(4)}`, "QA Agent", estimate.cost);
 
