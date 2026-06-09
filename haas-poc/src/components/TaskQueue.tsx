@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Task, TaskStatus } from "@/lib/types";
-import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, RefreshCw, AlertTriangle, Filter } from "lucide-react";
 
 const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string }> = {
   queued: { label: "Queued", icon: <Clock className="w-4 h-4" />, color: "text-zinc-500" },
@@ -18,6 +18,8 @@ export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<Task["type"] | "all">("all");
 
   const fetchTasks = async () => {
     try {
@@ -45,9 +47,47 @@ export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }
       .map((w) => w[0].toUpperCase() + w.slice(1))
       .join(" ");
 
+  const filteredTasks = tasks.filter((t) => {
+    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    if (typeFilter !== "all" && t.type !== typeFilter) return false;
+    return true;
+  });
+
+  const allTypes: Task["type"][] = ["draft-email", "research-topic", "generate-report", "summarize-document"];
+  const allStatuses: TaskStatus[] = ["queued", "awaiting-approval", "executing", "qa-review", "completed", "rejected", "failed"];
+
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Task Queue</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Task Queue</h2>
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-4 h-4 text-zinc-500" />
+          <span className="text-xs text-zinc-500">{filteredTasks.length} / {tasks.length}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as Task["type"] | "all")}
+          className="text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1 text-zinc-700 dark:text-zinc-300"
+        >
+          <option value="all">All Types</option>
+          {allTypes.map((t) => (
+            <option key={t} value={t}>{getTypeLabel(t)}</option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as TaskStatus | "all")}
+          className="text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1 text-zinc-700 dark:text-zinc-300"
+        >
+          <option value="all">All Statuses</option>
+          {allStatuses.map((s) => (
+            <option key={s} value={s}>{statusConfig[s].label}</option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
         {loading && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500 dark:text-zinc-400">
@@ -61,10 +101,12 @@ export default function TaskQueue({ refreshTrigger }: { refreshTrigger: number }
             {error}
           </div>
         )}
-        {!loading && !error && tasks.length === 0 && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">No tasks yet. Submit one above.</p>
+        {!loading && !error && filteredTasks.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
+            {tasks.length === 0 ? "No tasks yet. Submit one above." : "No tasks match the selected filters."}
+          </p>
         )}
-        {tasks.map((task) => (
+        {filteredTasks.map((task) => (
           <div
             key={task.id}
             className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
