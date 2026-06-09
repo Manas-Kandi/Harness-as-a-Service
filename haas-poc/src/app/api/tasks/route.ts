@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { store } from "@/lib/store";
 import { submitTask, approveTask } from "@/lib/harness";
+import { SubmitTaskSchema, ApproveTaskSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,27 +12,26 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action } = body;
 
-    if (action === "submit") {
-      const { type, description, mode, priority, requestedBy } = body;
-      if (!type || !description || !mode || !priority || !requestedBy) {
-        return Response.json({ error: "Missing required fields" }, { status: 400 });
-      }
+    const submitResult = SubmitTaskSchema.safeParse(body);
+    if (submitResult.success) {
+      const { type, description, mode, priority, requestedBy } = submitResult.data;
       const result = submitTask(type, description, mode, priority, requestedBy);
       return Response.json(result);
     }
 
-    if (action === "approve") {
-      const { taskId, approved, notes } = body;
-      if (!taskId) {
-        return Response.json({ error: "Missing taskId" }, { status: 400 });
-      }
+    const approveResult = ApproveTaskSchema.safeParse(body);
+    if (approveResult.success) {
+      const { taskId, approved, notes } = approveResult.data;
       const result = approveTask(taskId, approved, notes);
       return Response.json(result);
     }
 
-    return Response.json({ error: "Invalid action" }, { status: 400 });
+    const allErrors = [
+      ...(submitResult.error?.errors || []),
+      ...(approveResult.error?.errors || []),
+    ];
+    return Response.json({ error: "Invalid request", details: allErrors.map((e) => e.message) }, { status: 400 });
   } catch (error) {
     return Response.json({ error: String(error) }, { status: 500 });
   }
